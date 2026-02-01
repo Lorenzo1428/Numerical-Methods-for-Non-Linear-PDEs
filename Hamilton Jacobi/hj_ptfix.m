@@ -2,6 +2,7 @@ clc
 clear 
 close all
 
+%iconale stazionale con upwind corretto
 T = 2;
 dx = 0.01;
 x = -1:dx:1;
@@ -10,7 +11,7 @@ I = 2:Nx-1;
 L = I - 1;
 R = I + 1;
 
-u0 = @(x) zeros(length(x),1);%1 - x.^2;
+u0 = @(x) zeros(length(x),1);
 dt = dx/2;
 Nt = T/dt;
 

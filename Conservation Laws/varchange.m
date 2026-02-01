@@ -4,7 +4,7 @@ close all
 
 f = figure;
 T = 5;
-dx = 0.001;
+dx = 0.01;
 x = -2:dx:2;
 Nx = length(x);
 

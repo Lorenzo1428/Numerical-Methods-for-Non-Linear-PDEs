@@ -1,19 +1,19 @@
 clc
-clear
+clear 
 close all
 
-%problema a orizzonte finito
+%problema di controllo a orizzonte finito in cui il target si muove con velocita' costante in
+%una direzione
 
 gamma = 0; %peso del controllo
 
-Tf = 3;
+Tf = 1;
 dt = 0.05;
-Nt = floor(Tf/dt);
 dx = 0.025;
 epsi = 1e-6;
 tol = 1e-10;
-f = @(x,y,a) [0,0] + a + [ y/(sqrt(x^2+y^2) + epsi), -x/(sqrt(x^2+y^2) + epsi) ];
-rho = linspace(0,1.1,4);
+f = @(x,y,a) [-1,1] + 0*[ y/(sqrt(x^2+y^2) + epsi), -x/(sqrt(x^2+y^2) + epsi) ]  + a;
+rho = linspace(0,1.5,4);
 rho = rho(2:end);
 theta = linspace(0,2*pi,16);
 [R,T] = ndgrid(rho,theta);
@@ -23,7 +23,7 @@ N = length(x);
 Na = size(A,1);
 [X,Y] = ndgrid(x);
 
-% centro del target e raggio
+%scelta del centro del target
 figure;
 tile_size = 0.25; 
 Checker = mod(floor(X/tile_size) + floor(Y/tile_size), 2);
@@ -48,16 +48,30 @@ hold on
 pause(0.5)
 close all
 disp("Centro target = [" + xc + " " + yc + "]")
+close all
+
+%velocita' del target e raggio
+xvel = -0.7;
+yvel = 0.3;
 radius = 0.1;
-
-
 %running cost
-l = @(x,y,a) (1 + gamma*(a(1)^2 + a(2)^2))*( (x - xc)^2 + (y - yc)^2 > radius^2); 
+l = @(s,x,y,a) (gamma*(a(1)^2 + a(2)^2) + 10)*( (x - (xc+xvel*s))^2 + (y - (yc+yvel*s))^2 >= radius^2);
 interp = @(t,s,Vc) (1-t)*(1-s)*Vc(1) + t*(1-s)*Vc(2) + (1-t)*s*Vc(3) + s*t*Vc(4);
 
+s = 0:dt:Tf;
+Nt = length(s);
+s = s(Nt-1:-1:1);
+
+xc_f = xc + xvel*Tf;
+yc_f = yc + yvel*Tf;
+
 %final cost
-dist = (X - xc).^2 + (Y - yc).^2;
-V = 1e2.*( dist > radius^2);
+if abs(xc_f) > 1 || abs(yc_f) > 1
+    V = ones(N,N) * 1e12;
+else
+    dist_sq = (X - xc_f).^2 + (Y - yc_f).^2;
+    V = (10+0.5*dist_sq)*(dist_sq > radius^2) + 0*(dist_sq <= radius^2);
+end
 
 Vm = zeros(N);
 Vk = Vm;
@@ -65,12 +79,19 @@ Vk = Vm;
 Vt = zeros(N,N,Nt);
 Vt(:,:,Nt) = V;
 for n = 1:Nt-1
+    xc_vel = xc+xvel*s(n);
+    yc_vel = yc+yvel*s(n);
+    if abs(xc_vel) > 1 || abs(yc_vel) > 1
+        V = inf*ones(N,N);
+        V(:,:,n) = V;
+        continue;
+    end
 
     for i = 1:N
         for j = 1:N
             Vm(i,j) = 1e12;
 
-            if (X(i,j) - xc)^2 + (Y(i,j) - yc)^2 <= radius^2
+            if (X(i,j) - (xc_vel))^2 + (Y(i,j) - (yc_vel))^2 <= radius^2
                 Vm(i,j) = 0;
                 continue;
             end
@@ -87,7 +108,7 @@ for n = 1:Nt-1
                         continue;
                     end
                     Vc = [V(Ci,Cj) V(Ci+1,Cj) V(Ci,Cj+1) V(Ci+1,Cj+1)];
-                    Vij = (interp((xs(1) - xi)/dx,(xs(2) - yi)/dx,Vc)+ dt*l(X(i,j),Y(i,j),A(m,:)));
+                    Vij = (interp((xs(1) - xi)/dx,(xs(2) - yi)/dx,Vc)+ dt*l(s(n),X(i,j),Y(i,j),A(m,:)));
                     Vm(i,j) = min(Vm(i,j),Vij);
                 end
             end
@@ -106,4 +127,4 @@ function [xi,yi] = findcell(x,dx)
 end
 
 clearvars i j m n
-save("FiniteHorizonData.mat");
+save("MobileTargetData.mat");

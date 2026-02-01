@@ -2,6 +2,7 @@ clc
 clear 
 close all
 
+%risolve iconale stazionaria
 h = 0.01;
 dx = 0.01;
 da= 0.01;

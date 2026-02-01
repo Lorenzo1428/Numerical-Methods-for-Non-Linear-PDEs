@@ -2,18 +2,15 @@ clc
 clear
 close all
 
-%problema a orizzonte finito
+%problema a orizzonte finito che descrive il muro
 
-gamma = 0; %peso del controllo
-
-Tf = 3;
+Tf = 2;
 dt = 0.05;
-Nt = floor(Tf/dt);
 dx = 0.025;
 epsi = 1e-6;
 tol = 1e-10;
-f = @(x,y,a) [0,0] + a + [ y/(sqrt(x^2+y^2) + epsi), -x/(sqrt(x^2+y^2) + epsi) ];
-rho = linspace(0,1.1,4);
+f = @(x,y,a) [1,0] + 0*[ y/(sqrt(x^2+y^2) + epsi), -x/(sqrt(x^2+y^2) + epsi) ]  + a;
+rho = linspace(0,1,4);
 rho = rho(2:end);
 theta = linspace(0,2*pi,16);
 [R,T] = ndgrid(rho,theta);
@@ -23,7 +20,18 @@ N = length(x);
 Na = size(A,1);
 [X,Y] = ndgrid(x);
 
-% centro del target e raggio
+%muro
+s = 0:dt:Tf;
+Nt = length(s);
+s = s(Nt-1:-1:1);
+Tp = 3;
+shift = 0;
+duty = Tp/2;
+wank = @(t)  mod(t - shift, Tp) < (duty);
+base = 0.1;
+height = 1;
+
+%centro del target e raggio
 figure;
 tile_size = 0.25; 
 Checker = mod(floor(X/tile_size) + floor(Y/tile_size), 2);
@@ -32,6 +40,8 @@ set(h, 'EdgeColor', 'none');
 shading flat;
 hold on;
 colormap([0.90 0.92 0.95; 0.95 0.97 1.0]);
+square = fill([-base base base -base],[-height -height height height],'r', 'FaceAlpha', 1, 'EdgeColor', 'r',LineWidth=3);
+axis xy
 axis equal;
 grid on;
 set(gca, 'Layer', 'top', 'GridColor', [0.6 0.6 0.6], 'GridAlpha', 0.5);
@@ -50,14 +60,14 @@ close all
 disp("Centro target = [" + xc + " " + yc + "]")
 radius = 0.1;
 
-
 %running cost
-l = @(x,y,a) (1 + gamma*(a(1)^2 + a(2)^2))*( (x - xc)^2 + (y - yc)^2 > radius^2); 
+gamma = 1;
+l = @(s,x,y,a) (1 + gamma*((x - xc)^2 + (y - yc)^2))*( (x - xc)^2 + (y - yc)^2 > radius^2);
 interp = @(t,s,Vc) (1-t)*(1-s)*Vc(1) + t*(1-s)*Vc(2) + (1-t)*s*Vc(3) + s*t*Vc(4);
 
 %final cost
 dist = (X - xc).^2 + (Y - yc).^2;
-V = 1e2.*( dist > radius^2);
+V = 1e8*(dist > radius^2);
 
 Vm = zeros(N);
 Vk = Vm;
@@ -79,6 +89,8 @@ for n = 1:Nt-1
                 xs = [X(i,j), Y(i,j)] + dt*f(X(i,j),Y(i,j),A(m,:));
                 if abs(xs(1)) > 1 || abs(xs(2)) > 1 
                     continue;
+                elseif abs(xs(1)) <= base && abs(xs(2)) <= height && wank(s(n)+dt) == 1
+                    continue;
                 else
                     [xi,yi] = findcell(xs,dx);
                     Ci = round((xi+1)/dx) +1;
@@ -87,7 +99,7 @@ for n = 1:Nt-1
                         continue;
                     end
                     Vc = [V(Ci,Cj) V(Ci+1,Cj) V(Ci,Cj+1) V(Ci+1,Cj+1)];
-                    Vij = (interp((xs(1) - xi)/dx,(xs(2) - yi)/dx,Vc)+ dt*l(X(i,j),Y(i,j),A(m,:)));
+                    Vij = (interp((xs(1) - xi)/dx,(xs(2) - yi)/dx,Vc)+ dt*l(s(n),X(i,j),Y(i,j),A(m,:)));
                     Vm(i,j) = min(Vm(i,j),Vij);
                 end
             end
@@ -106,4 +118,4 @@ function [xi,yi] = findcell(x,dx)
 end
 
 clearvars i j m n
-save("FiniteHorizonData.mat");
+save("WallProblemData.mat");

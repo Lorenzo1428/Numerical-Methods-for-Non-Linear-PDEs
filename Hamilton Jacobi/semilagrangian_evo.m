@@ -3,15 +3,19 @@ clear
 close all
 
 T = 1;
-dt = 0.01;
-dx = 0.01;
+dt = 0.1;
+dx = 0.001;
 Nt = floor(T/dt);
 h = 0.01;
-x = -1:dx:1;
 a = -1:h:1;
-L = @(a) 1;%0.5*abs(a)^2;
 
-U0 = x.^2;
+id = input("1. Burgers 2. H(p) = |p| 3. eikonale evolutiva \n");
+id = max(mod(floor(id),4),1);
+
+L = @(a) 0.5*abs(a)^2*(id == 1) + 0*(id == 2) + 1*(id == 3);
+b = 1*(id == 3) + 2*(id ~= 3);
+x = -b:dx:b;
+U0 = abs(x);
 U = U0;
 U1(:,1) = U0;
 for  n = 1:Nt    
@@ -33,24 +37,31 @@ for  n = 1:Nt
     if any(mask_inf)
         U_new(mask_inf) = U(mask_inf); 
     end
-
-    U_new(1) = 0;
-    U_new(end) = 0;
+    
+    if id == 3 %condizione bordo eikonale
+        U_new(1) = 0;
+        U_new(end) = 0;
+    end
     U = U_new;
     U1(:,n+1) = U;
 end
 
-%f = @(x,t) (abs(x) - t*0.5).*(abs(x) > t) + (0.5*abs(x).^2/t).*(abs(x) <= t);
-%f = @(x,t) (abs(x) - t).*(abs(x) > t) + (zeros(1,length(x))).*(abs(x) <= t);
-f = @(x,t) 1 - abs(x);
+switch id
+    case 1
+        f = @(x,t) (abs(x) - t*0.5).*(abs(x) > t) + (0.5*abs(x).^2/t).*(abs(x) <= t);
+    case 2
+        f = @(x,t) (abs(x) - t).*(abs(x) > t) + (zeros(1,length(x))).*(abs(x) <= t);
+    case 3
+        f = @(x,t) 2 - abs(x);
+end
 
-err = norm(U1(:,end)' - f(x,1),inf);
+err = norm(U1(:,end)' - f(x,T),inf);
 
-p = plot(x,U1(:,1),x,f(x,1),"--");
+p = plot(x,U1(:,1),x,f(x,T),"--");
 legend("U approx","U esatta");
 title("T = 0");
-xlim([x(1) x(end)]);
-ylim([0 1]);
+xlim([-b b]);
+ylim([0 b]);
 for n = 1:Nt
     p(1).YData = U1(:,n+1);
     title("T = " + n*dt);
