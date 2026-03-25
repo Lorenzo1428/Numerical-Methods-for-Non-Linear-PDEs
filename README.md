@@ -29,7 +29,7 @@ Also, the script `entropy.m` describes the entropy solution of the transport equ
 ### Semilagrangian Approach
 - **Stationary Case:** Implemented in `semilagrangian_stat.m`.
 - **Evolutive Case:** Found in `semilagrangian_evo.m`.
-The algorithms are tested on `Burger's` and `Eikonal` equations.
+The algorithms are tested on `Burgers'` and `Eikonal` equations.
 
 ### Parallelism with convervation laws
 Parallel algorithms for Hamilton-Jacobi equations are provided in `hj_evo.m` and `hj_ptfix` for evolutive and stationary case respectively.
